@@ -5,7 +5,7 @@ from PIL import Image
 import streamlit as st
 
 # ================== CONFIG ==================
-API_URL_DEFAULT = "http://13.61.19.142:5000/predict"
+API_URL_DEFAULT = "http://13.62.8.232:5000/predict"
 MAX_IMAGE_MB = 8
 
 
