@@ -5,7 +5,9 @@ from PIL import Image
 import streamlit as st
 
 # ================== CONFIG ==================
+# Default API endpoint for plant prediction model
 API_URL_DEFAULT = "http://13.62.8.232:5000/predict"
+# Maximum allowed image size to prevent excessive payload
 MAX_IMAGE_MB = 8
 
 
@@ -24,6 +26,7 @@ def base64_to_pil_png(b64_str: str) -> Image.Image:
 
 
 def call_api(api_url: str, image_b64: str, include_gradcam: bool = True, timeout: int = 45) -> dict:
+    """Send base64 image to prediction API and handle response."""
     payload = {"image": image_b64, "include_gradcam": include_gradcam}
     r = requests.post(api_url, json=payload, timeout=timeout)
     # If Flask returns JSON error body, show it nicely:
@@ -46,6 +49,7 @@ st.set_page_config(
     layout="wide"
 )
 
+# Custom CSS for card-based UI design
 st.markdown(
     """
     <style>
@@ -76,6 +80,7 @@ st.markdown(
 )
 
 # ================== HEADER ==================
+# Two-column header: title/subtitle on left, Grad-CAM toggle on right
 left, right = st.columns([0.72, 0.28], vertical_alignment="center")
 
 with left:
@@ -87,17 +92,19 @@ with left:
 
 with right:
     st.markdown('<div class="pw-card">', unsafe_allow_html=True)
-    st.markdown("**API endpoint**")
-    api_url = st.text_input(" ", value=API_URL_DEFAULT, label_visibility="collapsed")
+    #st.markdown("**API endpoint**")
+    #api_url = st.text_input(" ", value=API_URL_DEFAULT, label_visibility="collapsed")
     include_gradcam = st.toggle("Include Grad-CAM overlay", value=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.divider()
 
 # ================== MAIN LAYOUT ==================
+# Left column: image upload and controls; Right column: results display
 colA, colB = st.columns([0.42, 0.58], gap="large")
 
 with colA:
+    # Upload controls card
     st.markdown('<div class="pw-card">', unsafe_allow_html=True)
     st.markdown("### Upload")
     uploaded = st.file_uploader(
@@ -120,6 +127,7 @@ with colA:
     st.markdown('</div>', unsafe_allow_html=True)
 
 with colB:
+    # Results display card
     st.markdown('<div class="pw-card">', unsafe_allow_html=True)
     st.markdown("### Results")
 
@@ -127,7 +135,7 @@ with colB:
         st.info("Upload an image and click **Predict**.")
         st.markdown('</div>', unsafe_allow_html=True)
     else:
-        # Load image safely
+        # Validate and load the uploaded image
         try:
             pil = Image.open(uploaded).convert("RGB")
         except Exception:
@@ -141,12 +149,12 @@ with colB:
             st.markdown("**Original**")
             st.image(pil, use_container_width=True)
 
-        # Only run when button pressed (and keep results in session)
+        # Store prediction results in session state to persist between reruns
         if "last_result" not in st.session_state:
             st.session_state.last_result = None
 
         if predict_btn:
-            # Basic size check
+            # Validate image file size before processing
             uploaded.seek(0, 2)  # move to end
             size_bytes = uploaded.tell()
             uploaded.seek(0)
@@ -157,12 +165,13 @@ with colB:
                 st.markdown('</div>', unsafe_allow_html=True)
                 st.stop()
 
-            # Compress before sending
+            # Compress image to reduce API payload size
             resized = pil.copy()
-            resized.thumbnail((1024, 1024))  # keep reasonable for upload
+            resized.thumbnail((1024, 1024))
 
             image_b64 = pil_to_base64_jpg(resized, quality=92)
 
+            # Send request to model API and handle errors
             with st.spinner("Calling model API…"):
                 try:
                     result = call_api(api_url, image_b64, include_gradcam=include_gradcam, timeout=60)
@@ -178,12 +187,13 @@ with colB:
             st.warning("Click **Predict** to run inference.")
             st.markdown('</div>', unsafe_allow_html=True)
         else:
+            # Extract prediction data from API response
             pred = result.get("prediction", "—")
             conf = result.get("confidence", None)
             scores = result.get("all_scores", {}) or {}
             grad_b64 = result.get("gradcam_png_base64")
 
-            # Summary row
+            # Display prediction summary in three columns
             s1, s2, s3 = st.columns([0.34, 0.33, 0.33])
             with s1:
                 st.markdown("**Prediction**")
@@ -200,7 +210,7 @@ with colB:
 
             st.markdown("")
 
-            # Grad-CAM overlay preview
+            # Display Grad-CAM heatmap overlay if available
             with preview_right:
                 st.markdown("**Grad-CAM overlay**" if include_gradcam else "**Grad-CAM disabled**")
                 if include_gradcam and grad_b64:
@@ -211,7 +221,7 @@ with colB:
 
             st.markdown("---")
 
-            # Score chart
+            # Display all class probabilities as bar chart
             if scores:
                 st.markdown("#### Class scores")
                 # Streamlit can chart a dict directly
