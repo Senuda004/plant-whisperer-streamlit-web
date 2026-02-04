@@ -6,7 +6,7 @@ import streamlit as st
 
 # ================== CONFIG ==================
 # Default API endpoint for plant prediction model
-API_URL_DEFAULT = "http://13.62.8.232:5000/predict"
+API_URL = "http://13.62.8.232:5000/predict"
 # Maximum allowed image size to prevent excessive payload
 MAX_IMAGE_MB = 8
 
