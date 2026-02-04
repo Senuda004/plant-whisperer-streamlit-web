@@ -174,7 +174,7 @@ with colB:
             # Send request to model API and handle errors
             with st.spinner("Calling model API…"):
                 try:
-                    result = call_api(api_url, image_b64, include_gradcam=include_gradcam, timeout=60)
+                    result = call_api(API_URL, image_b64, include_gradcam=include_gradcam, timeout=60)
                     st.session_state.last_result = result
                 except Exception as e:
                     st.error(str(e))
